@@ -10,7 +10,7 @@ paths:
 
   raw_files:
     paulaschoice: "paulaschoice_ingredients.csv"
-    coos:         "coos_성분정보.xlsx"
+    coos:         "coos_성분정보.csv"
     hwahae:       "hwahae_all.csv"
 
   output_files:

@@ -43,7 +43,7 @@ def load_paulaschoice(raw_dir, filename, required_cols):
 def load_coos(raw_dir, filename, required_cols):
     path = os.path.join(raw_dir, filename)
     _check_file(path)
-    df = pd.read_excel(path)
+    df = pd.read_csv(path)
     _validate_schema(df, required_cols, "COOS")
     logger.info(f"[COOS] 로드 완료: {df.shape}")
     return df
