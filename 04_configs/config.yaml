@@ -34,7 +34,7 @@ preprocessing:
     rename_cols:
       한글명:   ingredient_ko
       영문명:   ingredient_en
-      등급:     rating
+      등급:     rating        # prefix는 cleaner.py에서 pc_ 붙임
       효과별:   effect
       분류:     category
       성분설명: description
@@ -55,7 +55,7 @@ preprocessing:
     rename_cols:
       성분명:        ingredient_ko
       INCI:          ingredient_en
-      기능:          function
+      기능:          function         # prefix는 cleaner.py에서 coos_ 붙임
       종류:          type
       "CAS No.":     cas_no
       국가:          country
@@ -85,12 +85,14 @@ preprocessing:
       korean:  ingredient_ko
       english: ingredient_en
 
+  # 병합 후 드롭 — product_db로 분리된 컬럼 + 불필요 컬럼
   post_merge_drop_cols:
     - hw_ingredient_id
     - hw_is_allergy
     - hw_purposes
     - coos_cas_no
     - coos_country
+    # product_db로 분리된 상품 정보 컬럼 (청크에 불필요)
     - hw_product_id
     - hw_product_name
     - hw_brand_name
@@ -146,6 +148,7 @@ product_db:
 
 # ── 청킹 설정 ────────────────────────────────────────────────
 chunking:
+  # 병합 우선순위 컬럼 (유효값 있으면 먼저 채움)
   priority_cols:
     - pc_description
     - coos_function
@@ -168,19 +171,7 @@ chunking:
 
 # ── 임베딩 설정 ──────────────────────────────────────────────
 embedding:
-  # 임베딩 모델 선택: "huggingface" 또는 "openai"
-  provider: "openai"
-
-  # HuggingFace 설정 (provider: huggingface 일 때 사용)
-  huggingface:
-    model_name: "jhgan/ko-sroberta-multitask"
-    device:     "cuda"
-    normalize:  true
-
-  # OpenAI 설정 (provider: openai 일 때 사용)
-  openai:
-    model_name: "text-embedding-3-small"   # 1536d
-    # model_name: "text-embedding-3-large" # 3072d (최고품질, 5배 비쌈)
-    batch_size: 500                        # API 속도 제한 방지
-
+  model_name: "jhgan/ko-sroberta-multitask"
+  device:     "cuda"
+  normalize:  true
   faiss_save_prefix: "faiss_index_preset"
