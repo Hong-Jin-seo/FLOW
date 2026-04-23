@@ -1,0 +1,31 @@
+# Core
+langchain>=0.2.0
+langchain-openai>=0.1.0
+langchain-community>=0.2.0
+langchain-huggingface>=0.0.3
+openai>=1.30.0
+
+# 임베딩 모델
+sentence-transformers>=2.7.0
+
+# 검색
+faiss-cpu>=1.7.4
+rank-bm25>=0.2.2
+
+# OCR
+easyocr>=1.7.1
+Pillow>=10.0.0
+
+# UI
+streamlit>=1.35.0
+plotly>=5.20.0
+
+# 데이터 처리
+numpy>=1.26.0
+pandas>=2.0.0
+
+# 시각화
+matplotlib>=3.8.0
+
+# 환경변수
+python-dotenv>=1.0.0
