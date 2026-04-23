@@ -1,6 +1,6 @@
 """
 02_src/00_common/config_loader.py
-config.yaml 로드 + 경로 헬퍼
+config.yaml 로드 + 경로 헬퍼 + .env 자동 로드
 """
 
 import os
@@ -16,7 +16,37 @@ def get_project_root() -> str:
     )
 
 
+def load_env() -> None:
+    """
+    프로젝트 루트의 .env 파일을 환경변수로 로드합니다.
+    python-dotenv가 없으면 수동으로 파싱합니다.
+    """
+    env_path = os.path.join(get_project_root(), ".env")
+    if not os.path.exists(env_path):
+        return
+
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(env_path)
+    except ImportError:
+        # python-dotenv 없으면 수동 파싱
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, val = line.split("=", 1)
+                os.environ.setdefault(key.strip(), val.strip())
+
+
 def load_config(config_path: str = None) -> dict:
+    """
+    .env 로드 후 config.yaml을 읽어 반환합니다.
+    config_path 미지정 시 04_configs/config.yaml을 기본으로 사용합니다.
+    """
+    # .env 먼저 로드 (API 키 등 환경변수 설정)
+    load_env()
+
     if config_path is None:
         config_path = os.path.join(
             get_project_root(), "04_configs", "config.yaml"
