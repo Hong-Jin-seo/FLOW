@@ -28,8 +28,7 @@ class HistoryItem(BaseModel):
 class ChatRequest(BaseModel):
     question: str
     skin_type: Optional[str] = None
-    search_type: Optional[str] = "hyde"
-    history: Optional[list[HistoryItem]] = []   # ← 추가
+    history: Optional[list[HistoryItem]] = []
 
 
 class SourceItem(BaseModel):
@@ -40,17 +39,18 @@ class SourceItem(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     sources: list[SourceItem]
+    question_type: str
+    preset_id: int
+    search_type: str    # ← 추가
 
 
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
-    # HistoryItem → dict 변환
     history = [{"role": h.role, "content": h.content} for h in req.history]
 
     result = run_graph(
         query=req.question,
-        search_type=req.search_type or "hyde",
-        history=history   # ← 추가
+        history=history
     )
 
     sources = [
@@ -61,7 +61,13 @@ def chat(req: ChatRequest):
         for s in result.get("sources", [])
     ]
 
-    return ChatResponse(answer=result["answer"], sources=sources)
+    return ChatResponse(
+        answer=result["answer"],
+        sources=sources,
+        question_type=result.get("question_type", ""),
+        preset_id=result.get("preset_id", 2),
+        search_type=result.get("search_type", "dense")    # ← 추가
+    )
 
 
 @app.post("/api/curate")

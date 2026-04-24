@@ -20,15 +20,17 @@ from retriever import build_retriever, rerank_docs
 
 load_dotenv()
 
-# FAISS_PATH = r"C:\lecture\project\FLOW\00_data\02_processed\faiss_index_preset1"
-FAISS_PATH = os.path.join(
-    os.path.dirname(__file__),  # jihye_rag_chain/
-    "..",                        # 99_sandbox/
-    "..",                        # 01_notebooks/
-    "..",                        # FLOW/
-    "00_data", "02_processed", "faiss_index_preset1"
+# ── 경로 설정 ──────────────────────────────────────────────
+BASE_DIR = os.environ.get(
+    "FAISS_BASE_DIR",
+    os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        "..", "..", "..", "..",
+        "00_data", "02_processed"
+    ))
 )
-FAISS_PATH = os.path.abspath(FAISS_PATH)
+def get_faiss_path(preset_id: int = 2) -> str:
+    return os.path.join(BASE_DIR, f"faiss_index_preset{preset_id}")
 
 
 # ── Structured Output 스키마 1: 성분명 추출 ────────────────
@@ -48,7 +50,7 @@ class IngredientAnalysis(BaseModel):
 
 
 # ── FAISS 로드 ─────────────────────────────────────────────
-def load_vectorstore(faiss_path: str = FAISS_PATH):
+def load_vectorstore(faiss_path: str):
     embedding = OpenAIEmbeddings(model="text-embedding-3-small")
     return FAISS.load_local(
         faiss_path, embedding, allow_dangerous_deserialization=True
@@ -104,8 +106,8 @@ def compress_docs(docs: list, query: str) -> str:
 
 
 # ── RAG 체인 구성 ──────────────────────────────────────────
-def build_chain(search_type: str = "hyde"):
-    vs = load_vectorstore()
+def build_chain(search_type: str = "hyde", faiss_path: str = None):
+    vs = load_vectorstore(faiss_path or get_faiss_path(2))
     retriever = build_retriever(vs, search_type=search_type, k=20)
 
     prompt = ChatPromptTemplate.from_messages([
@@ -131,10 +133,12 @@ def build_chain(search_type: str = "hyde"):
 def get_answer(
     query: str,
     search_type: str = "hyde",
-    history: list = None
+    history: list = None,
+    preset_id: int = 2
 ) -> dict:
     history = history or []
-    chain, retriever = build_chain(search_type=search_type)
+    faiss_path = get_faiss_path(preset_id)
+    chain, retriever = build_chain(search_type=search_type, faiss_path=faiss_path)
 
     context_query = query
     if history:
@@ -148,26 +152,19 @@ def get_answer(
     # 2단계: GPT로 성분명 추출
     ingredient_names = extract_ingredients(query)
 
-    # 3단계: 성분명으로 필터링 (20개 후보에서)
+    # 3단계: 성분명으로 필터링
     if ingredient_names:
         filtered_docs = [
             doc for doc in raw_docs_candidates
             if any(name in doc.page_content for name in ingredient_names)
         ]
-        # 4단계: 필터된 결과를 Cohere Rerank로 재정렬
-        if filtered_docs:
-            final_docs = rerank_docs(context_query, filtered_docs, top_k=3)
-        else:
-            # 필터 결과 없으면 전체 후보 rerank
-            final_docs = rerank_docs(context_query, raw_docs_candidates, top_k=3)
+        final_docs = rerank_docs(context_query, filtered_docs, top_k=3) if filtered_docs else rerank_docs(context_query, raw_docs_candidates, top_k=3)
     else:
-        # 성분명 없는 질문은 전체 후보 rerank
         final_docs = rerank_docs(context_query, raw_docs_candidates, top_k=3)
 
-    # 5단계: GPT 답변 생성
+    # 4단계: GPT 답변 생성
     analysis: IngredientAnalysis = chain.invoke(context_query)
 
-    # 답변 포맷팅
     answer = f"""**EWG 등급**: {analysis.ewg_grade} ({analysis.safety_label})
 **출처**: {', '.join(analysis.sources) if analysis.sources else '정보 없음'}
 **적합 피부 타입**: {', '.join(analysis.skin_types) if analysis.skin_types else '정보 없음'}

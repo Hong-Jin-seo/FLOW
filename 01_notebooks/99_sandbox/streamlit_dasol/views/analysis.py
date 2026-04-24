@@ -15,20 +15,11 @@ _CHIPS = [
 
 
 def render() -> None:
-    """성분 분석 페이지를 렌더링합니다."""
     st.markdown('<div class="d-page">', unsafe_allow_html=True)
     components.page_header(
         "🌿 성분 분석",
         "궁금한 성분명을 입력하면 안전도를 분석해드립니다",
     )
-
-    search_type = st.selectbox(
-        "검색 방식",
-        ["dense", "bm25", "rrf", "hyde"],
-        index=3,   # hyde 기본 선택
-        key="search_type_select"
-    )
-    st.session_state.search_type = search_type
 
     _render_empty_state()
     _render_chat_history()
@@ -38,7 +29,6 @@ def render() -> None:
 
 
 def _render_empty_state() -> None:
-    """대화 없을 때 빈 상태 + 예시 질문 버튼"""
     if st.session_state.qa_messages:
         return
 
@@ -68,7 +58,6 @@ def _render_empty_state() -> None:
 
 
 def _render_chat_history() -> None:
-    """이전 대화 기록을 순서대로 렌더링합니다."""
     for msg in st.session_state.qa_messages:
         avatar = "🌿" if msg["role"] == "assistant" else "🧑"
         with st.chat_message(msg["role"], avatar=avatar):
@@ -81,7 +70,6 @@ def _render_chat_history() -> None:
 
 
 def _handle_input() -> None:
-    """질문 입력을 받아 API 호출"""
     prefill    = st.session_state.pop("qa_prefill", None)
     user_input = st.chat_input("예시: 방부제 성분이 포함된 화장품 성분 추천", key="analysis_chat")
     if prefill and not user_input:
@@ -99,8 +87,7 @@ def _handle_input() -> None:
                 data = api.chat(
                     user_input,
                     st.session_state.skin_type,
-                    st.session_state.get("search_type", "hyde"),
-                    st.session_state.qa_messages   # ← history 추가
+                    st.session_state.qa_messages
                 )
                 answer  = data["answer"]
                 sources = data.get("sources", [])
@@ -122,7 +109,6 @@ def _handle_input() -> None:
 
 
 def _render_reset_button() -> None:
-    """대화 초기화 버튼"""
     if not st.session_state.qa_messages:
         return
     if st.button("🗑️ 대화 초기화", key="reset_qa"):
