@@ -1,5 +1,13 @@
 import os
+
+# PaddlePaddle 3.x + Windows oneDNN/PIR 호환성 버그 방지
+os.environ["FLAGS_use_mkldnn"] = "0"
+os.environ["PADDLE_DISABLE_MKLDNN"] = "1"
+os.environ["FLAGS_enable_pir_in_executor"] = "0"   # PIR 실행 엔진 비활성화 (oneDNN 충돌 방지)
+
 import re
+import numpy as np
+import cv2
 import pandas as pd
 from dotenv import load_dotenv
 from paddleocr import PaddleOCR
