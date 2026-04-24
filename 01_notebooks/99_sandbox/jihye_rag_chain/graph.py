@@ -183,11 +183,12 @@ rag_graph = build_graph()
 
 def run_graph(
     query: str,
-    history: list = None
+    history: list = None,
+    search_type: str = "dense"
 ) -> dict:
     result = rag_graph.invoke({
         "query": query,
-        "search_type": "dense",
+        "search_type": search_type,
         "history": history or [],
         "question_type": "",
         "preset_id": 1,

@@ -28,6 +28,7 @@ class HistoryItem(BaseModel):
 class ChatRequest(BaseModel):
     question: str
     skin_type: Optional[str] = None
+    search_type: Optional[str] = "dense"
     history: Optional[list[HistoryItem]] = []
 
 
@@ -50,7 +51,8 @@ def chat(req: ChatRequest):
 
     result = run_graph(
         query=req.question,
-        history=history
+        history=history,
+        search_type=req.search_type or "dense"
     )
 
     sources = [

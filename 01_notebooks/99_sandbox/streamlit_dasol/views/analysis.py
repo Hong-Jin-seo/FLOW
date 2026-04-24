@@ -86,8 +86,8 @@ def _handle_input() -> None:
             try:
                 data = api.chat(
                     user_input,
-                    st.session_state.skin_type,
-                    st.session_state.qa_messages
+                    skin_type=st.session_state.skin_type,
+                    history=st.session_state.qa_messages
                 )
                 answer  = data["answer"]
                 sources = data.get("sources", [])
