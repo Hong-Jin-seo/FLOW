@@ -61,6 +61,7 @@ section[data-testid="stMain"] > div { padding-top: 0 !important; }
     display:grid; grid-template-columns:1fr 1fr;
     gap:80px; align-items:center; padding:88px 0 80px;
 }
+.d-hero-left { padding-left: 60px; }
 .d-hero-badge {
     display:inline-flex; align-items:center; gap:6px;
     background:#ecfdf5; border:1px solid #a7f3d0; color:#111827;
