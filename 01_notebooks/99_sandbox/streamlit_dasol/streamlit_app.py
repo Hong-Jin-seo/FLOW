@@ -27,7 +27,7 @@ st.set_page_config(
     page_title="DermaLens | AI 스킨케어",
     page_icon="\U0001f33f",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # ── 모듈 임포트

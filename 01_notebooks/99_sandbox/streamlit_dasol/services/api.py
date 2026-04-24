@@ -1,6 +1,6 @@
 """
 services/api.py
-FastAPI 백엔드 클라이언트 — /api/chat, /api/curate 호출 래퍼
+FastAPI 서버 호출 담당 — /api/chat, /api/curate 엔드포인트 연결
 """
 from __future__ import annotations
 from typing import Any
@@ -12,10 +12,15 @@ _TIMEOUT_CURATE = 90
 
 
 class APIError(Exception):
-    """백엔드 연결 또는 응답 오류"""
+    """서버 응답 오류 예외"""
 
 
-def chat(question: str, skin_type: str | None = None) -> dict[str, Any]:
+def chat(
+    question: str,
+    skin_type: str | None = None,
+    search_type: str = "hyde",
+    history: list = None
+) -> dict[str, Any]:
     """
     POST /api/chat
     Returns: {"answer": str, "sources": list[{"product_name": str, "content": str}]}
@@ -24,7 +29,12 @@ def chat(question: str, skin_type: str | None = None) -> dict[str, Any]:
     try:
         resp = requests.post(
             f"{API_BASE}/chat",
-            json={"question": question, "skin_type": skin_type},
+            json={
+                "question": question,
+                "skin_type": skin_type,
+                "search_type": search_type,
+                "history": history or []
+            },
             timeout=_TIMEOUT_CHAT,
         )
         resp.raise_for_status()
@@ -32,7 +42,7 @@ def chat(question: str, skin_type: str | None = None) -> dict[str, Any]:
     except requests.exceptions.ConnectionError:
         raise APIError(
             "❌ FastAPI 서버에 연결할 수 없습니다. "
-            "`uvicorn app.main:app --reload` 를 먼저 실행해주세요."
+            "`uvicorn app.main:app --reload`로 서버를 먼저 실행하세요."
         )
     except Exception as exc:
         raise APIError(f"❌ 오류: {exc}") from exc
@@ -56,7 +66,7 @@ def curate(message: str, session: dict) -> dict[str, Any]:
     except requests.exceptions.ConnectionError:
         raise APIError(
             "❌ FastAPI 서버에 연결할 수 없습니다. "
-            "`uvicorn app.main:app --reload` 를 먼저 실행해주세요."
+            "`uvicorn app.main:app --reload`로 서버를 먼저 실행하세요."
         )
     except Exception as exc:
         raise APIError(f"❌ 오류: {exc}") from exc

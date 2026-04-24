@@ -1,6 +1,6 @@
 """
 views/analysis.py
-성분 분석 페이지 — RAG 기반 Q&A 채팅 인터페이스
+성분 분석 페이지 — RAG 기반 Q&A 질의응답
 """
 import streamlit as st
 from services import api
@@ -8,19 +8,28 @@ from ui import components
 from state import session as sess
 
 _CHIPS = [
-    "민감성 피부 성분",
-    "보습 성분 추천",
-    "미백 성분",
+    "방부제 성분 화장품 성분 분석",
+    "민감성 피부 성분 추천",
+    "계면활성제 성분 분석",
 ]
 
 
 def render() -> None:
-    """성분 분석 페이지를 렌더링한다."""
+    """성분 분석 페이지를 렌더링합니다."""
     st.markdown('<div class="d-page">', unsafe_allow_html=True)
     components.page_header(
-        "🔍 성분 분석",
-        "궁금한 성분이나 피부 고민을 질문해보세요",
+        "🌿 성분 분석",
+        "궁금한 성분명을 입력하면 안전도를 분석해드립니다",
     )
+
+    search_type = st.selectbox(
+        "검색 방식",
+        ["dense", "bm25", "rrf", "hyde"],
+        index=3,   # hyde 기본 선택
+        key="search_type_select"
+    )
+    st.session_state.search_type = search_type
+
     _render_empty_state()
     _render_chat_history()
     _handle_input()
@@ -29,7 +38,7 @@ def render() -> None:
 
 
 def _render_empty_state() -> None:
-    """대화가 없을 때 안내 화면 + 예시 칩 버튼"""
+    """대화 없을 때 빈 상태 + 예시 질문 버튼"""
     if st.session_state.qa_messages:
         return
 
@@ -44,13 +53,12 @@ def _render_empty_state() -> None:
             성분 분석을 시작하세요
           </div>
           <div style="font-size:.875rem; color:#9ca3af; margin-bottom:28px;">
-            예: "민감성 피부에 좋은 성분 추천해줘"
+            예시: "방부제 성분이 포함된 화장품 성분 추천"
           </div>
         </div>''',
         unsafe_allow_html=True,
     )
 
-    # 예시 칩 버튼
     cols = st.columns([1, 1, 1, 1, 1])
     for i, chip in enumerate(_CHIPS):
         with cols[i + 1]:
@@ -60,40 +68,45 @@ def _render_empty_state() -> None:
 
 
 def _render_chat_history() -> None:
-    """저장된 대화 메시지를 표시한다."""
+    """이전 대화 기록을 순서대로 렌더링합니다."""
     for msg in st.session_state.qa_messages:
-        avatar = "🌿" if msg["role"] == "assistant" else "👤"
+        avatar = "🌿" if msg["role"] == "assistant" else "🧑"
         with st.chat_message(msg["role"], avatar=avatar):
             st.markdown(msg["content"])
             if msg.get("sources"):
-                with st.expander("📚 참고한 데이터"):
+                with st.expander("📚 참고 문서 보기"):
                     for src in msg["sources"]:
                         st.markdown(f'**📦 {src["product_name"]}**')
                         st.code(src["content"], language=None)
 
 
 def _handle_input() -> None:
-    """채팅 입력 처리 및 API 호출"""
+    """질문 입력을 받아 API 호출"""
     prefill    = st.session_state.pop("qa_prefill", None)
-    user_input = st.chat_input("예: 민감성 피부에 좋은 성분 추천해줘", key="analysis_chat")
+    user_input = st.chat_input("예시: 방부제 성분이 포함된 화장품 성분 추천", key="analysis_chat")
     if prefill and not user_input:
         user_input = prefill
     if not user_input:
         return
 
     st.session_state.qa_messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user", avatar="👤"):
+    with st.chat_message("user", avatar="🧑"):
         st.markdown(user_input)
 
     with st.chat_message("assistant", avatar="🌿"):
-        with st.spinner("성분 데이터베이스 검색 중..."):
+        with st.spinner("성분 안전도 분석 중..."):
             try:
-                data    = api.chat(user_input, st.session_state.skin_type)
+                data = api.chat(
+                    user_input,
+                    st.session_state.skin_type,
+                    st.session_state.get("search_type", "hyde"),
+                    st.session_state.qa_messages   # ← history 추가
+                )
                 answer  = data["answer"]
                 sources = data.get("sources", [])
                 st.markdown(answer)
                 if sources:
-                    with st.expander("📚 참고한 데이터"):
+                    with st.expander("📚 참고 문서 보기"):
                         for src in sources:
                             st.markdown(f'**📦 {src["product_name"]}**')
                             st.code(src["content"], language=None)
