@@ -2,7 +2,7 @@
 import streamlit as st
 
 _NAV_ITEMS = [
-    ("scanner",        "↺",  "성분 스캐너"),
+    ("scanner",        "📷", "성분 스캐너"),
     ("analysis",       "🔍", "성분 분석"),
     ("recommendation", "✨", "제품 추천"),
 ]

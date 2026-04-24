@@ -17,8 +17,11 @@ cohere>=5.0.0
 rapidfuzz>=3.0.0
 
 # OCR
-paddlepaddle>=3.0.0
-paddleocr>=2.9.0
+# paddlepaddle 3.0.0 + paddleocr 3.5.0 + paddlex 3.5.1 조합으로 테스트됨
+# 버전 변경 시 Windows oneDNN 호환성 문제 발생 가능
+paddlepaddle==3.0.0
+paddleocr==3.5.0
+paddlex==3.5.1
 opencv-python>=4.8.0
 easyocr>=1.7.1
 Pillow>=10.0.0

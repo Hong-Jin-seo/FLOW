@@ -64,7 +64,7 @@ def _render_hero() -> None:
         '      피부 고민에 맞는 성분을 찾고, 라벨을 스캔하여 위험도를 확인하세요.</div>'
         '    <div class="d-hero-btns">'
         '      <a href="?page=analysis" target="_self" class="d-btn-primary">성분 분석 시작하기 →</a>'
-        '      <a href="?page=scanner"  target="_self" class="d-btn-secondary">성분 스캐너 ↻</a>'
+        '      <a href="?page=scanner"  target="_self" class="d-btn-secondary">📷 성분 스캐너</a>'
         '    </div>'
         '  </div>'
         + hero_html()
