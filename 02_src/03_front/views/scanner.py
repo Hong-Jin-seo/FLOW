@@ -136,5 +136,5 @@ def _render_result_panel() -> None:
         components.scan_result_row(item["ingredient"], grade, score, desc)
 
     safe = data["total"] - data["danger_count"] - data["caution_count"]
-    warn = data["danger_count"] + data["caution_count"]
-    components.summary_box(data["total"], safe, warn)
+    components.summary_box(data["total"], safe, data["caution_count"], data["danger_count"])
+    st.markdown("<div style='padding-bottom:48px;'></div>", unsafe_allow_html=True)

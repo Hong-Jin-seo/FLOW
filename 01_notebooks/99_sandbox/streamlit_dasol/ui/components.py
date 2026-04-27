@@ -86,7 +86,7 @@ def rag_banner() -> None:
     )
 
 
-def summary_box(total: int, safe: int, warn: int) -> None:
+def summary_box(total: int, safe: int, caution: int, danger: int) -> None:
     """분석 요약 다크 박스를 렌더링한다."""
     st.markdown(
         f'''<div style="background:#111827;color:#f9fafb;border-radius:12px;
@@ -94,7 +94,8 @@ def summary_box(total: int, safe: int, warn: int) -> None:
           <strong>\U0001f50e 분석 요약</strong><br>
           전체 {total}개 성분 중
           <span style="color:#6ee7b7;font-weight:700;">안전 {safe}개</span>,
-          <span style="color:#fca5a5;font-weight:700;">주의 {warn}개</span>
+          <span style="color:#fcd34d;font-weight:700;">주의 {caution}개</span>,
+          <span style="color:#fca5a5;font-weight:700;">위험 {danger}개</span>
           검출되었습니다.
           민감성 피부의 경우 패치 테스트를 권장합니다.
         </div>''',

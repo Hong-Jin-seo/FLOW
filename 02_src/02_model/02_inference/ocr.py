@@ -1,3 +1,16 @@
+"""
+ocr.py — 화장품 라벨 이미지 → 성분 리스트 추출
+
+처리 흐름:
+  이미지 입력 → (전처리: 빛반사 제거 + CLAHE) → PaddleOCR 텍스트 추출
+  → 전성분 섹션 파싱 → 성분명 필터링 → coos_ewg_cleaned.csv 매칭 → 결과 반환
+
+외부 데이터:
+  00_data/02_processed/coos_ewg_cleaned.csv
+    - ingredient  : 한글 성분명
+    - coos_score  : 위험도 점수 (1=안전, 2=주의, 3=위험)
+"""
+
 import os
 
 # PaddlePaddle 3.x + Windows oneDNN/PIR 호환성 버그 방지
@@ -155,6 +168,7 @@ def find_ingredient(ocr_name: str) -> dict | None:
     if ocr_name in ko_map:
         return ko_map[ocr_name]
 
+    # score_cutoff=80: 80점 미만은 오매칭으로 간주 (실험적으로 결정된 임계값)
     hit = process.extractOne(ocr_name, ko_names, scorer=fuzz.token_sort_ratio, score_cutoff=80)
     if hit:
         return ko_map[hit[0]]
@@ -193,7 +207,7 @@ def extract_text_with_paddle(image_input) -> str:
     import numpy as np
     from PIL import Image
 
-    MAX_SIDE = 1500
+    MAX_SIDE = 1500  # 장변 기준 최대 픽셀 — 초과 시 PaddleOCR 메모리 오류 발생
 
     if isinstance(image_input, bytes):
         img = Image.open(io.BytesIO(image_input)).convert("RGB")

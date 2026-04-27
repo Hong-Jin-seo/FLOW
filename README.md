@@ -195,6 +195,6 @@ flow/
 | [coos.kr](https://coos.kr) | 성분별 기능, 국가별 규제, AI 설명 |
 | [화해](https://www.hwahae.co.kr) | EWG 수치, 사용자 리뷰 토픽, 피부 타입 |
 | [Paula's Choice](https://www.paulaschoice.com/ingredient-dictionary) | 전문가 평가 및 논문 근거 |
-| [식약처 KFDA](https://nedrug.mfds.go.kr) | 성분명 표준화, 이명 사전 |
+
 
 본 프로젝트는 [MIT License](./LICENSE) 하에 배포됩니다.

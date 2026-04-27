@@ -66,8 +66,8 @@ def _build_product_table() -> pd.DataFrame:
         .reset_index()
     )
 
-    agg["danger_count"]  = agg["ewg_scores"].apply(lambda xs: sum(1 for x in xs if x == 3))
-    agg["caution_count"] = agg["ewg_scores"].apply(lambda xs: sum(1 for x in xs if x == 2))
+    agg["danger_count"]  = agg["ewg_scores"].apply(lambda xs: sum(1 for x in xs if x and x >= 7))
+    agg["caution_count"] = agg["ewg_scores"].apply(lambda xs: sum(1 for x in xs if x and 3 <= x <= 6))
     valid_ewg            = agg["ewg_scores"].apply(lambda xs: [x for x in xs if x and x > 0])
     agg["avg_ewg"]       = valid_ewg.apply(lambda xs: sum(xs) / len(xs) if xs else 0.0)
 
@@ -155,11 +155,11 @@ def recommend_from_ocr(
     """
     danger_ingredients = [
         r["ingredient"] for r in ocr_results
-        if r.get("ewg") == 3
+        if r.get("ewg") and r["ewg"] >= 7
     ]
     caution_ingredients = [
         r["ingredient"] for r in ocr_results
-        if r.get("ewg") == 2
+        if r.get("ewg") and 3 <= r["ewg"] <= 6
     ]
 
     print(f"[OCR 분석] 위험 성분: {danger_ingredients}")
@@ -258,9 +258,9 @@ _SYSTEM_PROMPT = """당신은 화장품 성분 안전성 전문 AI 큐레이터�
 - 민감성·수분·진정 같은 피부 특성 → category 사용
 
 ### EWG 안전 등급
-- 1등급(안전): 피부 자극·독성 우려 없음
-- 2등급(주의): 일부 민감성 피부 주의
-- 3등급(위험): 독성·알레르기 위험 성분
+- 1~2등급(안전): 피부 자극·독성 우려 없음
+- 3~6등급(주의): 일부 민감성 피부 주의
+- 7~10등급(위험): 독성·알레르기 위험 성분
 
 결과를 설명할 때는 브랜드명, 제품명, 가격, 평점, 위험 성분 여부를 포함해주세요.
 위험 성분이 없는 제품(✅)을 우선적으로 추천해주세요."""

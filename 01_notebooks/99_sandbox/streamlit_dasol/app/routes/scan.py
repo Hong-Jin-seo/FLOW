@@ -38,8 +38,8 @@ async def scan(file: UploadFile = File(...)):
         return ScanResponse(
             ingredients   = ingredients,
             total         = len(ingredients),
-            danger_count  = sum(1 for i in ingredients if i.ewg == 3),
-            caution_count = sum(1 for i in ingredients if i.ewg == 2),
+            danger_count  = sum(1 for i in ingredients if i.ewg and i.ewg >= 7),
+            caution_count = sum(1 for i in ingredients if i.ewg and 3 <= i.ewg <= 6),
         )
     except Exception as e:
         logger.error(f"[scan] 응답 직렬화 실패:\n{traceback.format_exc()}")
