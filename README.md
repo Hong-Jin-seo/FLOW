@@ -1,166 +1,214 @@
-# ✨ Team Flow : 다중 소스 기반 지능형 화장품 성분 분석 서비스
+<h1 align="center">🧴 SkinCurator</h1>
 
-> **이중 가중치 알고리즘과 하이브리드 검색을 활용한 맞춤형 성분 안전도 RAG 서비스**
+<p align="center">
+  <b>복수의 뷰티 데이터를 통합한 RAG 기반 AI 스킨케어 의사결정 서비스</b><br>
+  파편화된 성분 정보를 통합하고, 개인 피부에 맞는 제품을 데이터 기반으로 추천합니다.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Jupyter-F37626?style=for-the-badge&logo=jupyter&logoColor=white" />
+  <img src="https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white" />
+  <img src="https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white" />
+  <img src="https://img.shields.io/badge/FAISS-0467DF?style=for-the-badge&logo=meta&logoColor=white" />
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
+  <img src="https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" />
+</p>
 
 ---
 
-## 팀 소개
+## ✨ Key Features
+
+- 🔍 **하이브리드 검색** — BM25 + Dense + RRF로 키워드·의미 맥락을 동시 파악
+- 🤖 **질문 유형 자동 라우팅** — 성분 분석·제품 추천·일반 질의를 분류해 최적 검색 방식 적용
+- ⚖️ **WoE 기반 이중 가중치** — 출처 신뢰도 × 성분 중요도 조합으로 결과 정렬
+- 🏅 **SAFE Score** — 안전성·효능을 통합한 S-A-B-C-D 5단계 성분 등급
+- 📸 **OCR 성분표 인식** — PaddleOCR로 화장품 패키지 촬영 시 성분 자동 추출·분석
+
+---
+
+## 🚀 Getting Started
+
+### 1. 설치
+
+```bash
+git clone https://github.com/your-org/flow.git
+cd flow
+pip install -r requirements.txt
+cp .env.example .env   # OPENAI_API_KEY, COHERE_API_KEY 입력
+```
+
+### 2. 데이터 파이프라인
+
+```bash
+python 03_scripts/01_validate_raw.py   # raw 파일 검증
+python 03_scripts/02_make_dataset.py   # 전처리 및 병합
+python 03_scripts/03_build_features.py # 청킹
+
+# FAISS 인덱스 생성 (OpenAI API 비용 발생)
+for i in {1..4}; do python 03_scripts/04_train.py --preset_id $i; done
+```
+
+### 3. 서비스 실행
+
+```bash
+# 터미널 1 — FastAPI 백엔드
+uvicorn api_server:app --reload
+
+# 터미널 2 — Streamlit 프론트엔드
+streamlit run streamlit_app.py
+```
+
+> ⚠️ 반드시 `flow/` 루트에서 실행 · FastAPI와 Streamlit 동시 구동 필요 · PaddleOCR 첫 실행 시 모델 자동 다운로드(수 분 소요)
+
+---
+
+## 🏗 시스템 아키텍처
+
+![Architecture](./09_assets/architecture.png)
+
+```
+사용자 질의 / 성분표 이미지
+        ↓
+  [PaddleOCR] 성분 추출 (이미지인 경우)
+        ↓
+  [LangGraph] 질문 유형 분류 → ingredient / recommend / general
+        ↓
+  [라우터] 유형별 최적 검색 방식 선택
+        ↓
+  [이중 가중치]  최종점수 = 검색점수 × chunk_weight × source_weight
+        ↓
+  [Cohere Rerank] 후보 20개 → 상위 5개 재정렬
+        ↓
+  [GPT-4o-mini] CoT + Structured Output 기반 답변 생성
+        ↓
+  [Streamlit + FastAPI] 결과 출력
+```
+
+---
+
+## 🔬 Technical Deep Dive
+
+<details>
+<summary><b>📊 데이터 설계 & ERD</b></summary>
+
+### ERD
+
+![ERD](./09_assets/erd.png)
+
+4개 소스(coos.kr, 화해, Paula's Choice, 식약처 KFDA)의 이종 데이터를 **CAS No. → INCI 영문명 → KFDA 표준 한글명 → 이명 사전** 순서의 계층적 매핑으로 표준화합니다.
+
+| 테이블 | 설명 | 주요 컬럼 |
+| :--- | :--- | :--- |
+| `ewg_chunk` | 성분별 안전 등급·점수 | `ingredient_ko`, `hw_ewg`, `coos_score`, `pc_grade` |
+| `basic_info_chunk` | 기본 기능·카테고리 | `pc_effect`, `pc_category`, `coos_function`, `hw_purpose` |
+| `expert_chunk` | 전문가 평가·국가별 기준 | `pc_description`, `coos_ai_desc`, `coos_KR`, `hw_category` |
+
+</details>
+
+<details>
+<summary><b>⚖️ WoE 기반 가중치 시스템</b></summary>
+
+SCCS·EFSA·WHO 가이드라인 기반으로 **Relevance(0.35) · Validity(0.35) · Reliability(0.2)** 3가지 기준을 산출·정규화합니다.
+
+$$\text{최종점수} = \text{검색점수} \times \text{chunk\_weight} \times \text{source\_weight}$$
+
+| 소스 | 가중치 | 근거 |
+| :--- | :---: | :--- |
+| EWG (화해) | 0.40 | 피부 자극·안전과 직접 관련, 대규모 데이터 |
+| Paula's Choice | 0.35 | 전문가 논문 기반, 높은 과학적 타당성 |
+| COOS | 0.25 | 국가별 규제 정보, 국내 특화 데이터 |
+
+</details>
+
+<details>
+<summary><b>🔀 검색 모델 라우팅 & 실험 결과</b></summary>
+
+LangGraph classify_node가 질문을 자동 분류한 뒤, NDCG@3 평가 기반으로 최적 검색 방식을 적용합니다.
+
+| 질문 유형 | 선택 방식 | NDCG@3 | 예시 |
+| :--- | :---: | :---: | :--- |
+| ingredient | Dense | 1.444 | "나이아신아마이드 EWG 등급?" |
+| recommend | BM25 | 1.822 | "지성 피부에 뭐 써?" |
+| general | BM25 | 0.926 | "화장품 어떻게 보관?" |
+
+**FAISS 프리셋 (청크 가중치)**
+
+| 프리셋 | EWG | Basic Info | Expert | 용도 |
+| :---: | :---: | :---: | :---: | :--- |
+| Preset1 | 0.33 | 0.33 | 0.33 | general (균등) |
+| Preset2 | 0.50 | 0.35 | 0.15 | ingredient (안전성 중심) |
+| Preset3 | 0.40 | 0.45 | 0.15 | 안전성 + 기본정보 균형 |
+| Preset4 | 0.45 | 0.45 | 0.10 | recommend |
+
+</details>
+
+<details>
+<summary><b>📁 폴더 구조</b></summary>
+
+```
+flow/
+├── 00_data/
+│   ├── 00_raw/          # 원본 데이터
+│   ├── 01_interim/      # 전처리 중간 산출물
+│   └── 02_processed/    # 최종 RAG용 청크
+├── 01_notebooks/        # 실험 로그
+├── 02_src/
+│   ├── 00_common/       # 설정 로더, 로거
+│   ├── 01_data/         # 데이터 파이프라인
+│   ├── 02_model/        # FAISS 인덱싱, RAG 체인, 평가
+│   └── 03_front/        # Streamlit UI
+├── 03_scripts/          # 파이프라인 자동화
+├── 04_configs/          # config.yaml
+├── 05_artifacts/        # FAISS 인덱스
+├── 09_assets/           # README 이미지
+├── app.py
+├── api_server.py
+└── streamlit_app.py
+```
+
+</details>
+
+---
+
+## 👥 Team Flow
+
+**프로젝트 기간**: 2026.04.24 — 2026.04.27
 
 <table>
   <tr align="center">
-    <td><img src="https://github.com/jjhhyy0926/motor-chata/blob/main/assets/minha.png?raw=true" width="120px"><br><b>김민하</b></td>
-    <td><img src="https://github.com/jjhhyy0926/motor-chata/blob/main/assets/jaehyun.png?raw=true" width="120px"><br><b>배재현</b></td>
-    <td><img src="https://github.com/jjhhyy0926/motor-chata/blob/main/assets/jihye.png?raw=true" width="120px"><br><b>윤지혜</b></td>
-    <td><img src="https://github.com/jjhhyy0926/motor-chata/blob/main/assets/yhjeon.png?raw=true" width="120px"><br><b>전윤하</b></td>
-    <td><img src="https://github.com/motor-chata/motor-chata/blob/main/assets/ekthf.png?raw=true" width="120px"><br><b>정다솔</b></td>
-    <td><img src="https://github.com/motor-chata/motor-chata/blob/main/assets/wlkstj.png?raw=true" width="120px"><br><b>홍진서</b></td>
+    <td><img src="https://i.namu.wiki/i/643jgTgLVQz0BSwMlgrrBHwReXJ19iRGS5bxDMLSxsPM4GkN-uOFsy6Pp9RiX7nEasn9WvHMLs09raOXZdp55UnSOTBlyHuBGlsFQUfmEKMihNHSeDJonYr23W2RjRrrLDY0wYrSCo3vvxYkZSFmVw.webp" width="100px"><br><a href="https://github.com/leedhroxx"><b>김민하</b></a></td>
+    <td><img src="https://i.namu.wiki/i/UNFQIgJYne_H9jkN5j24jyGY2laGmWrke_x3M-nEZkSD1J5wTNIRS7Wx_iJyGCYqcFMJ1aNHSn5HNlKF_8lM9_wR-zKUCdLHdDjRJ1Yn8X6nHJ9cOdwQP_obJfqsIVuIT4i90lSi1RpObI9txk28NQ.webp" width="100px"><br><a href="https://github.com/rshyun24"><b>배재현</b></a></td>
+    <td><img src="https://i.namu.wiki/i/9ox-ZTFvJTp9NnfR7lfYejD5hQuBsARibzQva-1eZYOYFig3m4OrVnxdZXNhRdmOvHzjtC5jGb9P_IXejenqrWx6j6-kLwItI1oJE08p09mdCV2DPmhoTPPs4sOh1sdzg_GpB-koxeq_upE93UXs8w.webp" width="100px"><br><a href="https://github.com/jjhhyy0926"><b>윤지혜</b></a></td>
+    <td><img src="https://i.namu.wiki/i/4fCAU9Ybh2SEjBXvmxfujyqF8O1L7ErL8_wambUdwOsL9wOkoN_iQ9baUv1JV0xBRn33dxLfENat13pAQfDFgJ92IRe8ydxy91_YB9PRr_xehlgXqDZZZ8dtDpsoG69LeNDwvPLzvKYn8gywIlMxpQ.webp" width="100px"><br><a href="https://github.com/yoonha315"><b>전윤하</b></a></td>
+    <td><img src="https://i.namu.wiki/i/ZnpEAAI7med8T9czv4jHEO3F_SRO0vb-vuNnvRvONC898ryjJrEiG5vUAF_nuTApH9Fe2CDjEOEHq-kSIA1AvpStjcxh0h91B1iDVP3hM3QfeR7hj7K97FxKGJDiJpfGG6t6wSK5F4fbjbFPoKr8uA.webp" width="100px"><br><a href="https://github.com/soll07"><b>정다솔</b></a></td>
+    <td><img src="https://i.namu.wiki/i/4LeawTUtEIuFpBNrGYYmZDUfLflQiuQlvlU-sDR-BXgLVntn2krnY6XuBYPUgkOCEUqrdpoEHJqW2msV3JYWBTOAHoCFAYCAi7WW0tzSdO9uTbQJI2jLeUam-4O82pvIQ5Dnla5OvIqxb-njgjO2Uw.webp" width="100px"><br><a href="https://github.com/Hong-Jin-seo"><b>홍진서</b></a></td>
   </tr>
   <tr align="center">
-    <td>
-      <a href="https://github.com/leedhroxx"><img src="https://img.shields.io/badge/GitHub-leedhroxx-181717?style=flat&logo=github&logoColor=white"></a><br>
-      <b>GitHub 총괄 관리</b><br>검색 엔진 성능 평가<br>최적 지표 분석
-    </td>
-    <td>
-      <a href="https://github.com/rshyun24"><img src="https://img.shields.io/badge/GitHub-rshyun24-181717?style=flat&logo=github&logoColor=white"></a><br>
-      <b>Vector DB 구축</b><br>FAISS 인덱스 구축<br>소스별 가중치 설계
-    </td>
-    <td>
-      <a href="https://github.com/jjhhyy0926"><img src="https://img.shields.io/badge/GitHub-jjhhyy0926-181717?style=flat&logo=github&logoColor=white"></a><br>
-      <b>프론트엔드 개발</b><br>Streamlit UI<br>EasyOCR 연동 구현
-    </td>
-    <td>
-      <a href="https://github.com/yoonha315"><img src="https://img.shields.io/badge/GitHub-yoonha315-181717?style=flat&logo=github&logoColor=white"></a><br>
-      <b>데이터 엔지니어링</b><br>데이터 청크 변환<br>임베딩 모델 최적화
-    </td>
-    <td>
-      <a href="https://github.com/soll07"><img src="https://img.shields.io/badge/GitHub-soll07-181717?style=flat&logo=github&logoColor=white"></a><br>
-      <b>RAG 파이프라인</b><br>LangChain 체인 구축<br>프롬프트 설계
-    </td>
-    <td>
-      <a href="https://github.com/Hong-Jin-seo"><img src="https://img.shields.io/badge/GitHub-Hong--Jin--seo-181717?style=flat&logo=github&logoColor=white"></a><br>
-      <b>Notion 체계 관리</b><br>Notion 환경 구축<br>가중치 알고리즘 개발
-    </td>
+    <td>데이터 전처리<br>검색 병렬 실행<br>GitHub 총괄</td>
+    <td>임베딩/인덱싱<br>FAISS 구축<br>가중치 설계</td>
+    <td>RAG 파이프라인<br>LangChain 구축<br>Streamlit UI</td>
+    <td>청크 변환<br>데이터 전처리<br>임베딩 최적화</td>
+    <td>프론트엔드<br>UI/UX 개발<br>RAGChain 연동</td>
+    <td>데이터 전처리<br>점수 비교 로직<br>Notion 총괄</td>
   </tr>
 </table>
 
 ---
 
-## 프로젝트 기간
-**2026.04.24 : 2026.04.27**
+## 💬 회고
+
+> 여기에 팀원별 또는 전체 회고를 작성해주세요.
 
 ---
 
-## 프로젝트 개요
+## 📚 데이터 출처 & 라이선스
 
-### 배경
-* 화장품 성분 정보의 파편화로 인해 소비자들은 여러 플랫폼을 번거롭게 교차 확인해야 하는 불편함 존재
-* 단순 키워드 검색을 넘어 사용자의 피부 고민이나 전문가적 소견을 결합한 지능형 답변 시스템 필요
-* 데이터 출처의 신뢰도와 정보 유형에 따른 정교한 데이터 랭킹 시스템 구축
+| 소스 | 제공 정보 |
+| :--- | :--- |
+| [coos.kr](https://coos.kr) | 성분별 기능, 국가별 규제, AI 설명 |
+| [화해](https://www.hwahae.co.kr) | EWG 수치, 사용자 리뷰 토픽, 피부 타입 |
+| [Paula's Choice](https://www.paulaschoice.com/ingredient-dictionary) | 전문가 평가 및 논문 근거 |
+| [식약처 KFDA](https://nedrug.mfds.go.kr) | 성분명 표준화, 이명 사전 |
 
-### 주요 기능 및 목표
-* **다중 소스 통합**: 약 9.4만 행의 방대한 데이터를 통합 스키마로 관리하여 정보의 누락 방지
-* **고도화된 하이브리드 검색**: BM25와 Dense 검색을 RRF로 병합하여 키워드와 의미론적 맥락을 동시에 파악
-* **이중 가중치 시스템**: 성분 중요도와 출처 신뢰도를 결합한 독자적인 가중치 알고리즘 적용
-
----
-
-## 프로젝트 설계
-
-### ERD (Entity Relationship Diagram)
-![ERD](./09_assets/erd.png)
-
-### 데이터 정의 (Schema)
-| 테이블명 | 설명 | 주요 컬럼 |
-| :--- | :--- | :--- |
-| **ewg_chunk** | 성분별 안전 등급 및 점수 | `ingredient_ko`, `hw_ewg`, `coos_score`, `pc_grade` |
-| **basic_info_chunk** | 성분 기본 기능 및 카테고리 | `pc_effect`, `pc_category`, `coos_function`, `hw_purpose` |
-| **expert_chunk** | 전문가 평가 및 국가별 기준 | `pc_description`, `coos_ai_desc`, `coos_KR`, `hw_category` |
-
-### 프로젝트 아키텍처
-![Architecture](./09_assets/architecture.png)
-
----
-
-## 폴더 구조
-```text
-project/
-├── 00_data/
-│   ├── 00_raw/                # 원본 데이터 (coos, 화해, PC)
-│   │   └── categories/        # 화해 카테고리별 CSV
-│   ├── 01_interim/            # 전처리 중간 산출물
-│   └── 02_processed/          # 최종 RAG용 청크 데이터
-│
-├── 01_notebooks/
-│   ├── 00_ingestion/          # 크롤링 노트북 (coos, 화해, PC)
-│   ├── 01_preprocessing/      # 전처리·청킹·임베딩 노트북
-│   ├── 02_features/           # 피처 실험
-│   ├── 03_models/             # 모델 실험
-│   ├── 04_training/           # 학습 실험
-│   └── 99_sandbox/            # 프로토타입 (dasol_skin_curator, jaehyun_OCR, streamlit_dasol)
-│
-├── 02_src/
-│   ├── 00_common/             # 설정 로더, 로거 유틸리티
-│   ├── 01_data/               # 데이터 파이프라인
-│   │   ├── 00_ingestion/      #   원본 로드 + 스키마 검증
-│   │   ├── 01_preprocessing/  #   전처리·병합·청킹
-│   │   └── 02_io/             #   JSON/CSV 읽기·쓰기
-│   ├── 02_model/              # FAISS 인덱싱 및 RAG 로직
-│   │   ├── 00_architectures/  #   임베딩 모델 팩토리
-│   │   ├── 01_training/       #   학습 로직
-│   │   ├── 02_inference/      #   추론 로직
-│   │   └── 03_registry/       #   FAISS 빌드·저장·로드
-│   └── 03_front/              # Streamlit UI
-│       ├── 00_ui/             #   전역 CSS · 컴포넌트
-│       ├── 01_views/          #   페이지별 뷰
-│       ├── 02_state/          #   세션 상태 관리
-│       ├── 03_viz/            #   시각화 모듈
-│       └── 04_services/       #   API 클라이언트
-│
-├── 03_scripts/                # 파이프라인 자동화 스크립트
-│   ├── 01_validate_raw.py     #   원본 데이터 검증
-│   ├── 02_make_dataset.py     #   전처리 → merged JSON + product_db
-│   ├── 03_build_features.py   #   청크 생성 (프리셋 1~4)
-│   └── 04_train.py            #   임베딩 → FAISS 인덱스 구축
-│
-├── 04_configs/                # 중앙 설정 파일
-│   └── config.yaml
-│
-├── 05_artifacts/              # 학습 산출물
-│   ├── 00_models/             #   모델 체크포인트
-│   ├── 01_preprocessors/      #   전처리기 저장
-│   └── 02_metrics/            #   평가 지표
-│
-├── 06_runs/                   # 실험 실행 로그
-├── 07_tests/                  # 테스트 코드
-├── 08_pages/                  # Streamlit 멀티페이지
-├── 09_assets/                 # README 이미지 및 ERD
-│
-├── app.py                     # 서비스 메인 실행 파일
-├── requirements.txt
-├── LICENSE
-└── README.md
-```
----
-## 기술 스택
-
-### Language : Frameworks
-* ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=Python&logoColor=white)
-* **LangChain** : **OpenAI GPT-4o-mini** 활용
-
-### Embedding : Vector DB
-* **Embedding Model**: OpenAI `text-embedding-3-small (1536d)` 활용 (768d 레거시 제거)
-* **Vector DB**: `FAISS` (1536d 기본 설정)
-* **Similarity Metric**: `similarity_search_with_relevance_scores()` 기반 정밀 Cosine Similarity 측정
-  * $$ \text{similarity} = \cos(\theta) = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|} $$
-
-### Search Logic
-* **Hybrid Search**: BM25 + Dense RRF 병합 알고리즘
-* **HyDE**: BM25 + Dense 통합 검색 기반 가상 답변 생성 로직 개선
-* **OCR Module**: `EasyOCR` 성분 이미지 분석 모듈
-
----
-
-## 데이터 출처
-* **coos.kr**: 성분별 기능 및 국가별 규제 데이터
-* **화해 (Hwahae)**: 사용자 리뷰 토픽 및 EWG 수치
-* **Paula's Choice**: 성분별 전문가 평가 및 논문 근거 설명
+본 프로젝트는 [MIT License](./LICENSE) 하에 배포됩니다.
