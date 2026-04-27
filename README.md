@@ -67,10 +67,10 @@ streamlit run streamlit_app.py
 ## 🏗 시스템 아키텍처
 
 ### 전체 아키텍처
-![Architecture](./09_assets/architecture.png)
+![Architecture](06_assets/architecture.png)
 
 ### RAG 파이프라인
-![RAG Pipeline](./09_assets/rag_pipeline_architecture.png)
+![RAG Pipeline](06_assets/rag_pipeline_architecture.png)
 
 ---
 
@@ -81,7 +81,7 @@ streamlit run streamlit_app.py
 
 ### ERD
 
-![ERD](./09_assets/erd.png)
+![ERD](06_assets/erd.png)
 
 4개 소스(coos.kr, 화해, Paula's Choice, 식약처 KFDA)의 이종 데이터를 **CAS No. → INCI 영문명 → KFDA 표준 한글명 → 이명 사전** 순서의 계층적 매핑으로 표준화합니다.
 
