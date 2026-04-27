@@ -2,6 +2,9 @@
 02_src/01_data/01_preprocessing/chunker.py
 4가지 가중치 프리셋 청크 생성 + 검증
 
+각 성분(ingredient)을 ewg / basic_info / expert 3종 청크로 분리하고,
+프리셋별 가중치를 메타데이터에 부여합니다.
+
 변경사항:
   - select_best_rows() : 여러 행 병합 방식
   - _fill_defaults()   : coos_score/hw_ewg/pc_rating null → 0
@@ -28,6 +31,7 @@ logger = get_logger(__name__)
 
 # ── 유효값 필터 ───────────────────────────────────────────────
 def is_valid(val) -> bool:
+    """None, 빈 문자열, nan, '없음', '0' 등을 무효로 판정"""
     if val is None:
         return False
     s = str(val).strip()
@@ -132,6 +136,10 @@ def select_best_rows(data: list, priority_cols: list) -> dict:
 
 # ── 청크 생성 ─────────────────────────────────────────────────
 def build_chunks(best_rows: dict, weights: dict, score_label_map: dict) -> list:
+    """
+        병합된 성분 데이터를 ewg / basic_info / expert 청크로 분리합니다.
+        각 청크에 프리셋별 가중치와 공통 메타데이터를 부여합니다.
+        """
     chunks = []
 
     for ing, row in best_rows.items():
@@ -250,6 +258,13 @@ def build_chunks(best_rows: dict, weights: dict, score_label_map: dict) -> list:
 
 # ── 청크 검증 ─────────────────────────────────────────────────
 def validate_chunks(chunks: list, preset_id: int) -> None:
+    """
+        생성된 청크의 품질을 검증합니다.
+        - 청크 타입별 개수 및 평균 가중치 출력
+        - 동일 성분의 중복 청크 탐지
+        - 빈 청크 경고
+        - hw_ewg 범위값 미변환 건 경고
+        """
     type_map: dict[str, list] = defaultdict(list)
     for c in chunks:
         m = c.get("metadata", {})

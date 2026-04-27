@@ -25,6 +25,10 @@ def merge_sources(df_pc: pd.DataFrame,
                   df_coos: pd.DataFrame,
                   df_hwahae: pd.DataFrame,
                   post_drop_cols: list) -> pd.DataFrame:
+    """
+    3개 소스를 ingredient_ko/ingredient_en 기준 outer join으로 병합합니다.
+    병합 후 product_db로 분리된 컬럼을 드롭합니다.
+    """
     # 키 컬럼 공백 제거 (매칭 누락 방지)
     for df in [df_pc, df_coos, df_hwahae]:
         for col in KEY_COLS:
@@ -60,11 +64,15 @@ def build_product_db(df_hwahae_raw: pd.DataFrame,
 
 
 def merge_ewg_scores(df: pd.DataFrame, ing_col: str) -> pd.DataFrame:
-    """중복 성분명 병합 — 0 아닌 유효값 우선, 없으면 0"""
+    """
+    중복 성분명 병합 — 0이 아닌 유효 스코어 우선 채택,
+    성분명은 가장 빈도 높은 표기를 대표값으로 사용합니다.
+    """
     merged_rows = []
     for key, group in df.groupby("ingredient_key"):
         valid_scores = [s for s in group["score_parsed"].tolist() if s != 0]
         score = valid_scores[0] if valid_scores else 0
+        # 동일 성분의 여러 표기 중 최빈값을 대표 이름으로 선택
         representative = group[ing_col].astype(str).str.strip().value_counts().idxmax()
         merged_rows.append({
             "ingredient": representative,

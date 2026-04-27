@@ -20,11 +20,13 @@ logger = get_logger(__name__)
 
 
 def _check_file(path: str) -> None:
+    """파일 존재 여부 확인 — 없으면 FileNotFoundError 발생"""
     if not os.path.exists(path):
         raise FileNotFoundError(f"원본 파일을 찾을 수 없습니다: {path}")
 
 
 def _validate_schema(df: pd.DataFrame, required_cols: list, name: str) -> None:
+    """필수 컬럼이 모두 존재하는지 검증 — 누락 시 ValueError 발생"""
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
         raise ValueError(f"[{name}] 필수 컬럼 누락: {missing}")
@@ -32,6 +34,7 @@ def _validate_schema(df: pd.DataFrame, required_cols: list, name: str) -> None:
 
 
 def load_paulaschoice(raw_dir, filename, required_cols):
+    """PaulasChoice CSV 로드 + 스키마 검증"""
     path = os.path.join(raw_dir, filename)
     _check_file(path)
     df = pd.read_csv(path, encoding="utf-8")
@@ -41,6 +44,7 @@ def load_paulaschoice(raw_dir, filename, required_cols):
 
 
 def load_coos(raw_dir, filename, required_cols):
+    """COOS CSV 로드 + 스키마 검증"""
     path = os.path.join(raw_dir, filename)
     _check_file(path)
     df = pd.read_csv(path)
@@ -50,6 +54,7 @@ def load_coos(raw_dir, filename, required_cols):
 
 
 def load_hwahae(raw_dir, filename, required_cols):
+    """화해 CSV 로드 + 스키마 검증"""
     path = os.path.join(raw_dir, filename)
     _check_file(path)
     df = pd.read_csv(path, encoding="utf-8")
@@ -59,6 +64,13 @@ def load_hwahae(raw_dir, filename, required_cols):
 
 
 def load_all_raw(config: dict = None):
+    """
+        전체 원본 데이터를 한 번에 로드합니다.
+        config 미지정 시 기본 config.yaml을 사용합니다.
+
+        Returns:
+            (df_paulaschoice, df_coos, df_hwahae) 튜플
+        """
     if config is None:
         config = load_config()
 

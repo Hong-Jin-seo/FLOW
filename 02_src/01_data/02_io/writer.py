@@ -20,6 +20,7 @@ logger = get_logger(__name__)
 
 
 class _SafeEncoder(json.JSONEncoder):
+    """numpy 타입 및 NaN을 JSON 직렬화 가능한 형태로 변환"""
     def default(self, obj):
         if isinstance(obj, float) and np.isnan(obj):
             return None
@@ -33,10 +34,12 @@ class _SafeEncoder(json.JSONEncoder):
 
 
 def _ensure_dir(path):
+    """저장 경로의 상위 디렉토리가 없으면 생성"""
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
 
 def save_json(records: list, output_path: str) -> None:
+    """리스트를 JSON 파일로 저장"""
     _ensure_dir(output_path)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(records, f, ensure_ascii=False, indent=2, cls=_SafeEncoder)
@@ -44,11 +47,13 @@ def save_json(records: list, output_path: str) -> None:
 
 
 def save_df_as_json(df: pd.DataFrame, output_path: str) -> None:
+    """DataFrame을 JSON으로 저장 — NaN을 None으로 치환 후 저장"""
     records = df.where(pd.notna(df), None).to_dict(orient="records")
     save_json(records, output_path)
 
 
 def save_csv(df: pd.DataFrame, output_path: str) -> None:
+    """DataFrame을 CSV로 저장 — utf-8-sig(BOM 포함)로 Excel 호환"""
     _ensure_dir(output_path)
     df.to_csv(output_path, index=False, encoding="utf-8-sig")
     logger.info(f"[저장] CSV: {output_path} ({len(df)}행)")

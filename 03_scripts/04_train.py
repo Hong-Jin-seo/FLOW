@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(ROOT, "02_src", "01_data", "02_io"))
 sys.path.insert(0, os.path.join(ROOT, "02_src", "02_model", "00_architectures"))
 sys.path.insert(0, os.path.join(ROOT, "02_src", "02_model", "03_registry"))
 
-# 의존성 자동 설치
+# 의존성 자동 설치 — 필수 패키지가 없으면 pip으로 설치 시도
 try:
     from langchain_openai import OpenAIEmbeddings
     from langchain_community.vectorstores import FAISS
@@ -49,6 +49,7 @@ logger = get_logger(__name__)
 
 # ── Document 변환 ─────────────────────────────────────────────
 def chunks_to_documents(chunks: list) -> list:
+    """청크 dict 리스트를 LangChain Document 리스트로 변환"""
     return [
         Document(page_content=c["page_content"], metadata=c["metadata"])
         for c in chunks
@@ -57,12 +58,18 @@ def chunks_to_documents(chunks: list) -> list:
 
 # ── FAISS 배치 구축 ───────────────────────────────────────────
 def build_faiss_batched(docs: list, model, batch_size: int) -> FAISS:
+    """
+    대량 Document를 배치 단위로 나누어 FAISS 인덱스를 구축합니다.
+    첫 배치로 인덱스를 생성한 뒤, 나머지 배치를 merge하는 방식입니다.
+    """
     total = len(docs)
     logger.info(f"[FAISS] 구축 시작 (총 {total:,}개 / 배치 {batch_size})")
 
+    # 첫 배치로 인덱스 초기화
     vs = FAISS.from_documents(docs[:batch_size], model)
     logger.info(f"  배치 1/{(total-1)//batch_size+1} 완료: {min(batch_size, total):,}개")
 
+    # 나머지 배치를 순차적으로 merge
     total_batches = (total - 1) // batch_size + 1
     for i in range(1, total_batches):
         start    = i * batch_size
@@ -78,6 +85,10 @@ def build_faiss_batched(docs: list, model, batch_size: int) -> FAISS:
 # ── 저장 + 검증 ───────────────────────────────────────────────
 def save_and_verify(vs: FAISS, save_path: str, model,
                     expected_count: int) -> bool:
+    """
+    FAISS 인덱스를 저장한 뒤 다시 로드하여
+    벡터 수·docstore 수·원본 수가 일치하는지 검증합니다.
+    """
     if os.path.exists(save_path):
         shutil.rmtree(save_path)
         logger.info(f"기존 폴더 삭제: {save_path}")
@@ -91,6 +102,7 @@ def save_and_verify(vs: FAISS, save_path: str, model,
     logger.info(f"  index.faiss : {faiss_mb:.1f} MB")
     logger.info(f"  index.pkl   : {pkl_mb:.1f} MB")
 
+    # 저장된 인덱스 재로드 후 무결성 검증
     reload_vs      = FAISS.load_local(
         save_path, model, allow_dangerous_deserialization=True
     )
@@ -102,6 +114,7 @@ def save_and_verify(vs: FAISS, save_path: str, model,
             f"✅ 검증 통과: 벡터={vector_count:,} / "
             f"docstore={docstore_count:,} / 원본={expected_count:,}"
         )
+        # 간단한 검색 테스트로 동작 확인
         results = reload_vs.similarity_search("나이아신아마이드 EWG 등급", k=1)
         if results:
             logger.info(f"  검색 테스트 ✅: {results[0].page_content[:60]}")
@@ -133,14 +146,14 @@ def main(preset_id: int = None):
     logger.info(f"임베딩 provider: {provider}")
     model = build_embedding_model(em_cfg)
 
-    # 배치 크기
+    # provider별 배치 크기 — OpenAI는 API 속도 제한 고려하여 작게 설정
     batch_size = (
         em_cfg.get("openai", {}).get("batch_size", 500)
         if provider == "openai"
         else 2000
     )
 
-    # 실행할 프리셋 결정
+    # --preset_id 옵션이 있으면 해당 프리셋만, 없으면 전체 실행
     preset_ids = (
         [preset_id]
         if preset_id is not None
