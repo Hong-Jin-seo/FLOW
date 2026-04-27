@@ -65,25 +65,11 @@ streamlit run streamlit_app.py
 
 ## 🏗 시스템 아키텍처
 
+### 전체 아키텍처
 ![Architecture](./09_assets/architecture.png)
 
-```
-사용자 질의 / 성분표 이미지
-        ↓
-  [PaddleOCR] 성분 추출 (이미지인 경우)
-        ↓
-  [LangGraph] 질문 유형 분류 → ingredient / recommend / general
-        ↓
-  [라우터] 유형별 최적 검색 방식 선택
-        ↓
-  [이중 가중치]  최종점수 = 검색점수 × chunk_weight × source_weight
-        ↓
-  [Cohere Rerank] 후보 20개 → 상위 5개 재정렬
-        ↓
-  [GPT-4o-mini] CoT + Structured Output 기반 답변 생성
-        ↓
-  [Streamlit + FastAPI] 결과 출력
-```
+### RAG 파이프라인
+![RAG Pipeline](./09_assets/rag_pipeline_architecture.png)
 
 ---
 
@@ -111,7 +97,7 @@ streamlit run streamlit_app.py
 
 SCCS·EFSA·WHO 가이드라인 기반으로 **Relevance(0.35) · Validity(0.35) · Reliability(0.2)** 3가지 기준을 산출·정규화합니다.
 
-$$\text{최종점수} = \text{검색점수} \times \text{chunk\_weight} \times \text{source\_weight}$$
+$$\text{최종점수} = \text{검색점수} \times w_{\text{chunk}} \times w_{\text{source}}$$
 
 | 소스 | 가중치 | 근거 |
 | :--- | :---: | :--- |
