@@ -1,4 +1,4 @@
-<h1 align="center">🧴 SkinCurator</h1>
+<h1 align="center">🫧 SkinCurator by Flow</h1>
 
 <p align="center">
   <b>복수의 뷰티 데이터를 통합한 RAG 기반 AI 스킨케어 의사결정 서비스</b><br>
@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/FAISS-0467DF?style=for-the-badge&logo=meta&logoColor=white" />
   <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img src="https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" />
+  <a href="https://www.notion.so/ohgiraffers/3RD_PROJECT-33d649136c11806eb17fda8ac18be5f4"><img src="https://img.shields.io/badge/Notion-000000?style=for-the-badge&logo=notion&logoColor=white" /></a>
 </p>
 
 ---
@@ -171,12 +172,12 @@ flow/
     <td><img src="https://i.namu.wiki/i/4LeawTUtEIuFpBNrGYYmZDUfLflQiuQlvlU-sDR-BXgLVntn2krnY6XuBYPUgkOCEUqrdpoEHJqW2msV3JYWBTOAHoCFAYCAi7WW0tzSdO9uTbQJI2jLeUam-4O82pvIQ5Dnla5OvIqxb-njgjO2Uw.webp" width="100px"><br><a href="https://github.com/Hong-Jin-seo"><b>홍진서</b></a></td>
   </tr>
   <tr align="center">
-    <td>데이터 전처리<br>검색 병렬 실행<br>GitHub 총괄</td>
-    <td>임베딩/인덱싱<br>FAISS 구축<br>가중치 설계</td>
-    <td>RAG 파이프라인<br>LangChain 구축<br>Streamlit UI</td>
-    <td>청크 변환<br>데이터 전처리<br>임베딩 최적화</td>
-    <td>프론트엔드<br>UI/UX 개발<br>RAGChain 연동</td>
-    <td>데이터 전처리<br>점수 비교 로직<br>Notion 총괄</td>
+    <td>데이터 전처리<br>4가지 검색 병렬 실행<br>이중 가중치 재정렬<br>GitHub 총괄</td>
+    <td>Chunk 변환 & 임베딩</td>
+    <td>Langchain & RAGChain<br>Streamlit UI</td>
+    <td>Chunk 변환 & 임베딩</td>
+    <td>Langchain & RAGChain<br>Streamlit UI</td>
+    <td>데이터 전처리<br>4가지 검색 병렬 실행<br>이중 가중치 재정렬<br>Notion 총괄</td>
   </tr>
 </table>
 
